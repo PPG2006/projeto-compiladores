@@ -1,7 +1,7 @@
 from lang.scanner import Scanner
 from lang.tokens import (
-    Delimiter,
-    Keyword,
+    # Delimiter,
+    # Keyword,
     # Operator,
     Span,
     Token,
@@ -41,10 +41,9 @@ def proximo(scan: Scanner) -> Token:
         if texto == "false":
             return TokenBool(value=False, span=span)
 
-        try:
-            return TokenKeyword(kind=Keyword(texto), span=span)
-        except ValueError:
-            return TokenIdentifier(name=texto, span=span)
+        if (keyword := TokenKeyword.try_from_str(texto, span)) is not None:
+            return keyword
+        return TokenIdentifier(name=texto, span=span)
 
     # números
     # em branco nesse exemplo
@@ -65,12 +64,10 @@ def proximo(scan: Scanner) -> Token:
     # em branco nesse exemplo
 
     # delimitadores
-    try:
-        delim = Delimiter(ch)
+
+    if (delim := TokenDelimiter.try_from_str(ch, span)) is not None:
         scan.advance()
-        return TokenDelimiter(kind=delim, span=span)
-    except ValueError:
-        pass
+        return delim
 
     raise SyntaxError(f"Caractere inválido ou não implementado '{ch}' em {span}")
 
