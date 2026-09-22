@@ -1,0 +1,27 @@
+function menorOuIgual(a int, b int) -> bool {
+    return a <= b;
+}
+
+function main() {
+    var x int = -5;
+    var y int = +3;
+    var negacao bool = !true;
+    var vazio int[] = [];
+
+    if x < 0 {
+        print("x negativo");
+    } else if x == 0 {
+        print("x zero");
+    } else if x > 0 && y > 0 {
+        print("ambos positivos");
+    } else {
+        print("outro caso");
+    }
+
+    var convertido decimal = decimal(x);
+    var texto string = string(y);
+
+    loop i in 0..3 {
+        print(i);
+    }
+}
