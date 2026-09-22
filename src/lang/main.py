@@ -1,8 +1,8 @@
 import sys
-from src.scanner import Scanner
-from src.lexer import Lexer
-from src.tokens import TokenEOF
-from src.errors import LexicalError
+from lang.scanner import Scanner
+from lang.lexer import Lexer
+from lang.tokens import TokenEOF
+from lang.errors import LexicalError
 
 def formatar_token(t) -> str:
     nome = type(t).__name__.replace("Token", "")
