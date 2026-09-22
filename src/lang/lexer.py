@@ -1,21 +1,49 @@
 from .scanner import Scanner
 from .tokens import *
+from .errors import erro
 
 class Lexer:
 
     def __init__(self, scanner: Scanner):
         self.scanner = scanner
-        self.char = None  
+        self.char = None
 
+        #Rastreamento da posição (o Scanner não zera a coluna no \n)
+        self.line = 1
+        self.column = 0        
+        self.source_line = "" #Para guardar a linha do erro
+
+    #Função para substituir scanner.advance() para tambem guardar a linha do código
+    def _advancedSource(self) -> str:
+        c = self.scanner.advance()
+        if c == "\n":
+            self.line += 1
+            self.column = 0
+            self.source_line = ""
+        elif c != Scanner.EOF:
+            self.column += 1
+            self.source_line += c
+        return c
+
+    #Posição do PRÓXIMO caractere a ser lido.
+    def _position(self) -> Span:
+        return Span(line=self.line, col=self.column + 1)
+
+    #Quando detectado um erro, termina de ler a linha para montar a mensagem de erro
+    def _readUntilEnd(self):
+        while self.char not in ("\n", Scanner.EOF):
+            self._advancedSource()
+            self.char = self.scanner.peek()
+    
     def _skip(self):
         # Pular comentarios ou espaços em brancos, quebras de linhas
         while True:
             if self.char in (" ", "\t", "\r", "\n"):
-                self.scanner.advance()
+                self._advancedSource()
                 self.char = self.scanner.peek()
             elif self.char == '/' and self.scanner.peek_next() == '/':
                 while self.char not in ('\n', Scanner.EOF):
-                    self.scanner.advance()
+                    self._advancedSource()
                     self.char = self.scanner.peek()
             else:
                 break
@@ -25,9 +53,7 @@ class Lexer:
         self._skip()
         self.char = self.scanner.peek()
         
-        linha = self.scanner.get_row()
-        coluna = self.scanner.get_column()
-        span_atual = Span(line=linha, col=coluna)
+        span_atual = self._position()
 
         if self.char == Scanner.EOF:
             return TokenEOF(span=span_atual) 
@@ -54,8 +80,18 @@ class Lexer:
                 dot_count += 1
             
             num_txt += self.char
-            self.scanner.advance()
+            self._advancedSource()
             self.char = self.scanner.peek()
+
+        wrongNumber = num_txt.endswith('.') or (self.char == '.' and dot_count == 1)
+        if wrongNumber:
+            # consome o "pedaço" restante para mostrar tudo na mensagem
+            while self.char.isdigit() or self.char == '.':
+                num_txt += self.char
+                self._advancedSource()
+                self.char = self.scanner.peek()
+            self._readUntilEnd()
+            raise erro(2, num_txt, span.line, span.col, self.source_line)
 
         if dot_count == 0:
             return TokenInt(value=int(num_txt), span=span)
@@ -70,7 +106,7 @@ class Lexer:
         texto = ""
         while self.char != Scanner.EOF and (self.char.isalnum() or self.char == '_'):
             texto += self.char
-            self.scanner.advance()
+            self._advancedSource()
             self.char = self.scanner.peek()
 
         if texto == "true":
@@ -88,18 +124,19 @@ class Lexer:
         #Identifica strings (consome apenas o que está dentro dos "")
         texto = ""
         
-        self.scanner.advance()
+        self._advancedSource()
         self.char = self.scanner.peek()
 
-        while self.char != Scanner.EOF and self.char != '"':
+        while self.char not in (Scanner.EOF, '"', "\n"):
             texto += self.char
-            self.scanner.advance()
+            self._advancedSource()
             self.char = self.scanner.peek()
 
-        if self.char == Scanner.EOF:
-            raise Exception(f"Erro Léxico: String não fechada iniciada na linha {span.line}, coluna {span.col}.")
-
-        self.scanner.advance()
+        if self.char in (Scanner.EOF, "\n"):
+            self._readUntilEnd()
+            raise erro(1, "", span.line, span.col, self.source_line)
+            
+        self._advancedSource()
         self.char = self.scanner.peek()
 
         return TokenString(value=texto, span=span)
@@ -108,27 +145,25 @@ class Lexer:
         #Tenta operador duplo (ex: =!)
         token_operator = TokenOperator.try_from_str(self.char + self.scanner.peek_next(), span)
         if token_operator is not None:
-            self.scanner.advance()
-            self.scanner.advance()
+            self._advancedSource()
+            self._advancedSource()
             self.char = self.scanner.peek()
             return token_operator
 
         #Tenta operador com 1 caractere
         token_operator = TokenOperator.try_from_str(self.char, span)
         if token_operator is not None:
-            self.scanner.advance()
+            self._advancedSource()
             self.char = self.scanner.peek()
             return token_operator
 
         #Tenta delimitador (ex: ';', '(', ')', '{')
         token_delim = TokenDelimiter.try_from_str(self.char, span)
         if token_delim is not None:
-            self.scanner.advance()
+            self._advancedSource()
             self.char = self.scanner.peek()
             return token_delim 
 
         simbolo_invalido = self.char
-        self.scanner.advance()
-        self.char = self.scanner.peek()
-        raise Exception(f"Erro Léxico: Símbolo inválido '{simbolo_invalido}' na linha {span.line}, coluna {span.col}.")
-
+        self._readUntilEnd()
+        raise erro(0, simbolo_invalido, span.line, span.col, self.source_line)
