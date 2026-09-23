@@ -1,47 +1,54 @@
-from lang.tokens import Keyword
+from dataclasses import dataclass
+
+
+@dataclass
+class SymbolEntry:
+    id: int
+    name: str
+    count: int = 1
+
 
 # Essa classe guarda todas as palavras que o lexer encontrou no código,
 # tipo uma lista de "quem é quem"
 class SymbolTable:
+    tabela: dict[int, SymbolEntry]
+
     def __init__(self):
         self.tabela = {}  # dicionario: nome da palavra -> informacoes dela
 
-    def inserir(self, nome, linha, coluna):
+    def inserir(self, nome) -> SymbolEntry:
         # se a palavra ja apareceu antes, so soma mais uma vez
+        id = hash(nome)
         if nome in self.tabela:
-            self.tabela[nome]["vezes_encontrado"] += 1
-            return self.tabela[nome]
+            self.tabela[id].count += 1
+            return self.tabela[id]
 
-        # se for a primeira vez, verifica se é palavra reservada (tipo "var", "if")
-        # ou um nome que a pessoa que programou inventou (tipo "x", "soma")
-        eh_palavra_reservada = Keyword.try_from_str(nome) is not None
+        self.tabela[id] = SymbolEntry(id=id, name=nome)
+        return self.tabela[id]
 
-        self.tabela[nome] = {
-            "nome": nome,
-            "eh_palavra_reservada": eh_palavra_reservada,
-            "linha": linha,
-            "coluna": coluna,
-            "vezes_encontrado": 1,
-        }
-        return self.tabela[nome]
-
-    def consultar(self, nome):
+    def consultar(self, id):
         # devolve as infos da palavra, ou None se ela nunca apareceu
-        return self.tabela.get(nome)
+        return self.tabela.get(id)
 
-    def existe(self, nome):
+    def consultar_por_nome(self, nome):
+        return self.tabela.get(hash(nome))
+
+    def existe(self, id):
         # so responde True ou False
-        return nome in self.tabela
+        return id in self.tabela
 
-    def quantidade_de_nomes(self):
+    def existe_por_nome(self, nome):
+        return hash(nome) in self.tabela
+
+    def tamanho(self):
         return len(self.tabela)
 
 
 if __name__ == "__main__":
     # teste rapido pra ver se ta funcionando
     tabela = SymbolTable()
-    tabela.inserir("var", linha=1, coluna=1)
-    tabela.inserir("x", linha=1, coluna=5)
-    tabela.inserir("x", linha=3, coluna=2)  # "x" apareceu de novo
+    tabela.inserir("print")
+    tabela.inserir("x")
+    tabela.inserir("x")  # "x" apareceu de novo
 
     print(tabela.consultar("x"))

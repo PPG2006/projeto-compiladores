@@ -119,7 +119,7 @@ class TokenBool:
 class TokenIdentifier:
     """Identificador"""
 
-    name: str
+    id: int
     span: Span
 
 
