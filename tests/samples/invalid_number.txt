@@ -1,0 +1,3 @@
+function main() {
+    var x decimal = 12.34.56;
+}
