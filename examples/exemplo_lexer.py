@@ -12,6 +12,5 @@ token = None
 
 while not isinstance(token, TokenEOF):
     token = lexer.next_token()
-    token = lexer.next_token()
     valor_token = getattr(token, 'value', getattr(token, 'kind', getattr(token, 'name', '')))
     print(f"[{type(token).__name__}] Valor: {valor_token} na linha {token.span.line} e coluna {token.span.col}")
